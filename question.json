@@ -1,0 +1,23 @@
+{
+    "title": "Sample Quiz",
+    "created_at": 123,
+    "author": "trungtqt",
+    "flag": "BKSEC{sample_flag}",
+    "questions": [
+        {
+            "id": 1,
+            "question": "What is question A?",
+            "answer": "Option A1"
+        },
+        {
+            "id": 2,
+            "question": "What is question B?",
+            "answer": "Option B3"
+        },
+        {
+            "id": 3,
+            "question": "What is question C?",
+            "answer": "Option C4"
+        }
+    ]
+}
