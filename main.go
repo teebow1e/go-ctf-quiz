@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -32,6 +33,21 @@ type Config struct {
 type Server struct {
 	Host string
 	Port string
+}
+
+type LogQuestion struct {
+	QuestionId int    `json:"question_id"`
+	Question   string `json:"question"`
+	Answer     string `json:"answer"`
+	Status     string `json:"status"`
+}
+
+type LogEntry struct {
+	UserToken   string        `json:"user_token"`
+	Username    string        `json:"username"`
+	Timestamp   string        `json:"timestamp"`
+	QuizAttempt []LogQuestion `json:"quiz_attempt"`
+	Status      string        `json:"status"`
 }
 
 func NewServer(config *Config) *Server {
@@ -67,8 +83,11 @@ func handleRequest(conn net.Conn, questionPack *Quiz) {
 		conn.Close()
 		return
 	}
-	log.Printf("Received token: %s", string(message))
-	identity, err := verifyIdentity(strings.TrimSpace(string(message)))
+
+	token := strings.TrimSpace(string(message))
+
+	log.Printf("Received token: %s", token)
+	identity, err := verifyIdentity(token)
 	if err != nil {
 		conn.Write([]byte("Failed to verify. Please double-check your token.\n"))
 		conn.Close()
@@ -83,13 +102,38 @@ func handleRequest(conn net.Conn, questionPack *Quiz) {
 		conn.Close()
 		return
 	}
+
+	// Logging starts here
+	logEntry := &LogEntry{
+		UserToken:   token,
+		Username:    identity,
+		Timestamp:   time.Now().UTC().Format(time.RFC3339),
+		QuizAttempt: []LogQuestion{},
+	}
+
+	timeFormat := "2006-01-02_150405"
+	logFileName := fmt.Sprintf("./%s_%s.json", time.Now().Format(timeFormat), identity)
+
 	// Question part goes here
-	askQuestions(conn, reader, questionPack.Questions)
+	err = askQuestions(conn, reader, questionPack.Questions, logEntry)
+	if err != nil {
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "out of time") {
+			logEntry.Status = "time_out"
+		} else if strings.Contains(errMsg, "wrongly") {
+			logEntry.Status = "wrong_answer"
+		}
+		conn.Close()
+		logAttempt(*logEntry, logFileName)
+		return
+	}
 	showFlag(conn, questionPack.Flag)
+	logEntry.Status = "completed"
 	conn.Close()
+	logAttempt(*logEntry, logFileName)
 }
 
-func askQuestions(conn net.Conn, reader *bufio.Reader, qpack []Question) {
+func askQuestions(conn net.Conn, reader *bufio.Reader, qpack []Question, logEntry *LogEntry) error {
 	timer := time.NewTimer(time.Duration(30) * time.Second)
 	defer timer.Stop()
 
@@ -105,24 +149,55 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, qpack []Question) {
 		select {
 		case <-timer.C: // time's up -> should close conn here
 			// conn.Write([]byte("Time's up!\n"))
-			conn.Close()
-			return
+			return errors.New("user ran out of time")
 		case answer := <-answerCh:
 			if strings.TrimSpace(answer) == question.Answer { // single question correct -> continue
 				conn.Write([]byte("Correct!\n"))
+				logEntry.QuizAttempt = append(logEntry.QuizAttempt, LogQuestion{
+					QuestionId: question.ID,
+					Question:   question.Question,
+					Answer:     strings.TrimSpace(answer),
+					Status:     "correct",
+				})
 			} else { // single question wrong -> should close conn here
 				conn.Write([]byte("You're wrong.. sadly. Better luck next time!\n"))
-				conn.Close()
-				return
+				logEntry.QuizAttempt = append(logEntry.QuizAttempt, LogQuestion{
+					QuestionId: question.ID,
+					Question:   question.Question,
+					Answer:     strings.TrimSpace(answer),
+					Status:     "incorrect",
+				})
+				return errors.New("user answered wrongly")
 			}
 		}
 	}
+	return nil
 }
 
 func showFlag(conn net.Conn, flag string) {
 	conn.Write([]byte("Congratulations! You conquered all of my challenges! Here is the flag.\n"))
 	time.Sleep(2 * time.Second)
 	conn.Write([]byte(flag + "\n"))
+}
+
+func logAttempt(logEntry LogEntry, logFile string) {
+	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("failed to open log file: %v\n", err)
+		return
+	}
+	defer file.Close()
+
+	data, err := json.MarshalIndent(logEntry, "", "  ")
+	if err != nil {
+		log.Printf("failed to serialize log entry: %v\n", err)
+		return
+	}
+
+	_, err = file.Write(append(data, '\n'))
+	if err != nil {
+		log.Printf("failed to write log entry: %v\n", err)
+	}
 }
 
 func main() {

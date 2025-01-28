@@ -1,0 +1,22 @@
+{
+    "userToken": "ctfd_faeee089c4b9e8b42b4ce3112b66f59e74cc7aae8e0c9a2903632bf44ef8cdde",
+    "username": "sample_user",
+    "timestamp": "2025-01-29T14:30:00Z",
+    "quizAttempt": {
+        "questions": [
+            {
+                "questionNumber": 1,
+                "questionText": "What is 2 + 2?",
+                "userAnswer": "4",
+                "isCorrect": true
+            },
+            {
+                "questionNumber": 2,
+                "questionText": "What is the capital of France?",
+                "userAnswer": "Berlin",
+                "isCorrect": false
+            }
+        ],
+        "status": "game_over"
+    }
+}
