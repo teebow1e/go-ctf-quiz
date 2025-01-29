@@ -1,22 +1,44 @@
 {
-    "userToken": "ctfd_faeee089c4b9e8b42b4ce3112b66f59e74cc7aae8e0c9a2903632bf44ef8cdde",
-    "username": "sample_user",
-    "timestamp": "2025-01-29T14:30:00Z",
-    "quizAttempt": {
-        "questions": [
-            {
-                "questionNumber": 1,
-                "questionText": "What is 2 + 2?",
-                "userAnswer": "4",
-                "isCorrect": true
-            },
-            {
-                "questionNumber": 2,
-                "questionText": "What is the capital of France?",
-                "userAnswer": "Berlin",
-                "isCorrect": false
-            }
-        ],
-        "status": "game_over"
-    }
+    "user_token": "ctfd_faeee089c4b9e8b42b4ce3112b66f59e74cc7aae8e0c9a2903632bf44ef8cdde",
+    "username": "user_test",
+    "timestamp": "2025-01-29T16:30:19Z",
+    "quiz_attempt": [
+        {
+            "question_id": 1,
+            "question": "The first flag is located at the manual page of the current running shell when you connected to the server.",
+            "answer": "BKSEC{REDACTED}",
+            "status": "correct"
+        },
+        {
+            "question_id": 2,
+            "question": "The second flag is in the form: current-logged-in-user@kernel-release version.",
+            "answer": "bksec@1.33.7-00-generic",
+            "status": "correct"
+        },
+        {
+            "question_id": 3,
+            "question": "What is the most recently ran command?",
+            "answer": "python3 -c \"open('flag.txt', 'w').write('BKSEC{REDACTED}')\"",
+            "status": "correct"
+        },
+        {
+            "question_id": 4,
+            "question": "What is the main editor in the machine?",
+            "answer": "nano",
+            "status": "correct"
+        },
+        {
+            "question_id": 5,
+            "question": "The flag format is: location-of-gcc@gcc-version.",
+            "answer": "gcc@1.3.3.7",
+            "status": "correct"
+        },
+        {
+            "question_id": 6,
+            "question": "Who has the full permission of /secret.txt? (Full = Read + Write + Execute) (flag format: name@type (example: workgroup@owner))",
+            "answer": "name@type",
+            "status": "correct"
+        }
+    ],
+    "status": "completed"
 }

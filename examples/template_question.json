@@ -7,17 +7,17 @@
         {
             "id": 1,
             "question": "What is question A?",
-            "answer": "Option A1"
+            "answer": "Option A"
         },
         {
             "id": 2,
             "question": "What is question B?",
-            "answer": "Option B3"
+            "answer": "Option B"
         },
         {
             "id": 3,
             "question": "What is question C?",
-            "answer": "Option C4"
+            "answer": "Option C"
         }
     ]
 }

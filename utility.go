@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"unsafe"
 
 	"github.com/tidwall/gjson"
@@ -23,13 +24,13 @@ func verifyIdentity(token string) (string, error) {
 		fasthttp.ReleaseResponse(resp)
 	}()
 
-	req.SetRequestURI("http://192.168.194.130:8000" + "/api/v1/users/me")
+	req.SetRequestURI(os.Getenv("CTFD_URL") + "/api/v1/users/me")
 	req.Header.SetMethod("GET")
 	req.Header.SetContentType("application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
 	if err := fasthttp.Do(req, resp); err != nil {
-		log.Fatalf("error while pinging CTFd: %v\n", err)
+		log.Fatalf("[call-api-CTFd] error while pinging CTFd: %v\n", err)
 	}
 
 	if resp.StatusCode() == 200 {
