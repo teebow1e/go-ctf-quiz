@@ -28,8 +28,8 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 		conn.Write([]byte("Failed to verify. Please double-check your token.\n"))
 		return
 	}
-	conn.Write([]byte(fmt.Sprintf("Verification finished. Welcome %s.\n", identity)))
-	conn.Write([]byte(fmt.Sprintf("You are playing challenge %s.", quizObj.Title)))
+	conn.Write([]byte(fmt.Sprintf("Verification finished. Welcome %s.\n\n", identity)))
+	conn.Write([]byte(fmt.Sprintf("You are playing challenge %s.\n", quizObj.Title)))
 	conn.Write([]byte("In order to prove that you are worthy to receive the flag, please answer the following questions.\n"))
 	conn.Write([]byte("The timeout amount is 60 seconds.\n\n"))
 	conn.Write([]byte("Press any key to continue..."))
@@ -38,6 +38,7 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 		log.Println("[press-any-key] failed to capture user input: ", err)
 		return
 	}
+	conn.Write([]byte("\n"))
 
 	logEntry := &LogEntry{
 		UserToken:   token,
@@ -70,6 +71,7 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, questionPack []Question, 
 	for _, question := range questionPack {
 		timer := time.NewTimer(time.Duration(timeout) * time.Second)
 		conn.Write([]byte(question.Question + "\n"))
+		conn.Write([]byte("Your answer: "))
 		answerCh := make(chan string, 1)
 
 		go func() {
@@ -88,7 +90,7 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, questionPack []Question, 
 		case answer := <-answerCh:
 			timer.Stop()
 			if strings.TrimSpace(answer) == question.Answer {
-				conn.Write([]byte("Correct!\n"))
+				conn.Write([]byte("Correct!\n\n"))
 				logEntry.QuizAttempt = append(logEntry.QuizAttempt, LogQuestion{
 					QuestionId: question.ID,
 					Question:   question.Question,

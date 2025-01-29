@@ -38,13 +38,11 @@ func NewQuizServer(host string, port string, quizObj *Quiz) *QuizServer {
 }
 
 var (
-	quiz             *Quiz
-	logFile          *os.File
-	logMutex         sync.Mutex
-	questionFileName string = "./question.json"
-	logFileName      string = "quiz_attempts.json"
-	listeningHost    string = os.Getenv("HOST")
-	listeningPort    string = os.Getenv("PORT")
+	logFile       *os.File
+	logMutex      sync.Mutex
+	logFileName   string = "quiz_attempts.json"
+	listeningHost string = os.Getenv("HOST")
+	listeningPort string = os.Getenv("PORT")
 )
 
 func (server *QuizServer) Run() {
@@ -67,14 +65,17 @@ func (server *QuizServer) Run() {
 }
 
 func main() {
-	questionFile, err := os.ReadFile(questionFileName)
+	quiz := &Quiz{}
+
+	questionFilePath := "./question.json"
+	questionFile, err := os.ReadFile(questionFilePath)
 	if err != nil {
 		log.Fatalln("[question-init] failed to open questions file:", err)
 	}
 
 	err = json.Unmarshal(questionFile, quiz)
 	if err != nil {
-		log.Fatalln("[question-init] failed to unmarshal question json:", err)
+		log.Fatalln("[question-init] failed to unmarshal question json:", err.Error())
 	}
 
 	log.Println(quiz)

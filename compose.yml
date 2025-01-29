@@ -1,0 +1,10 @@
+services:
+  quiz-app:
+    build: .
+    env_file: .env
+    ports:
+      - "7000:${PORT}"
+    environment:
+      - HOST=${HOST}
+      - PORT=${PORT}
+      - CTFD_URL=${CTFD_URL}

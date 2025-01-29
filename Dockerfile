@@ -1,19 +1,18 @@
 # Build stage
-FROM golang:latest AS build
+FROM golang:1.23 AS build
 WORKDIR /app
 
 COPY go.* ./
 RUN go mod download
 
-RUN apt update
-RUN apt install -y musl-tools
-
 COPY . .
-RUN CGO_ENABLED=1 CC=musl-gcc go build --ldflags '-linkmode=external -extldflags=-static' -o binary .
+RUN go build -o binary .
 
 # Runtime stage
 FROM gcr.io/distroless/base
+WORKDIR /app
 
 COPY --from=build /app/binary /app/binary
+COPY ./question.json /app/question.json
 
-CMD ["/app/binary"]
+ENTRYPOINT ["/app/binary"]

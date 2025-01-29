@@ -1,8 +1,8 @@
 {
     "title": "Sample Quiz",
     "created_at": 123,
-    "author": "trungtqt",
-    "flag": "BKSEC{sample_flag}",
+    "author": "teebow1e",
+    "flag": "FLAG{sample_flag}",
     "questions": [
         {
             "id": 1,
