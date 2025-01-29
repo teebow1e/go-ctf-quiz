@@ -3,6 +3,7 @@
 A TCP server to facilitate the process of making checker for multi-question CTF challenge.
 
 Watch go-ctf-quiz in action:
+
 [![asciicast](https://asciinema.org/a/rNXFX9ivQF7xTaZ0vv9ok3bp7.svg)](https://asciinema.org/a/rNXFX9ivQF7xTaZ0vv9ok3bp7)
 
 # Features
