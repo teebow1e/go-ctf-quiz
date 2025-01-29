@@ -1,9 +1,11 @@
 services:
   quiz-app:
-    build: .
+    image: teebow1e/go-ctf-quiz
     env_file: .env
     ports:
       - "7000:${PORT}"
+    volumes:
+      - ./question.json:/app/question.json
     environment:
       - HOST=${HOST}
       - PORT=${PORT}

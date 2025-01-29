@@ -13,6 +13,5 @@ FROM gcr.io/distroless/base
 WORKDIR /app
 
 COPY --from=build /app/binary /app/binary
-COPY ./question.json /app/question.json
 
 ENTRYPOINT ["/app/binary"]
