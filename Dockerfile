@@ -2,6 +2,9 @@
 FROM golang:1.23 AS build
 WORKDIR /app
 
+# ENV GOPROXY=https://goproxy.cn,direct
+# ENV GOPROXY=direct
+
 COPY go.* ./
 RUN go mod download
 
