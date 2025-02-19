@@ -19,6 +19,7 @@ In order to get started, prepare a question file named `question.json`. The file
     "created_at": 123,
     "author": "teebow1e",
     "flag": "FLAG{sample_flag}",
+    "timeout_amount": 30,
     "questions": [
         {
             "id": 1,

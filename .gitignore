@@ -2,3 +2,4 @@ go-ctf-quiz
 binary
 .env
 question.json
+quiz_attempts.json

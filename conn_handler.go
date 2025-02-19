@@ -6,34 +6,42 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
 
 func handleRequest(conn net.Conn, quizObj *Quiz) {
+	var identity, token string
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
-	conn.Write([]byte("Please enter your token: "))
-	message, err := reader.ReadString('\n')
-	if err != nil {
-		log.Println("[token stage] failed to read user input: ", err)
-		return
+	if os.Getenv("STRICT_MODE") == "1" {
+		conn.Write([]byte("Please enter your token: "))
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			log.Println("[token stage] failed to read user input: ", err)
+			return
+		}
+
+		token = strings.TrimSpace(string(message))
+
+		log.Printf("Received token: %s\n", token)
+		identity, err = verifyIdentity(token)
+		if err != nil {
+			conn.Write([]byte("Failed to verify. Please double-check your token.\n"))
+			return
+		}
+	} else {
+		identity = "guest"
+		token = "guest-token"
 	}
 
-	token := strings.TrimSpace(string(message))
-
-	log.Printf("Received token: %s\n", token)
-	identity, err := verifyIdentity(token)
-	if err != nil {
-		conn.Write([]byte("Failed to verify. Please double-check your token.\n"))
-		return
-	}
 	conn.Write([]byte(fmt.Sprintf("Verification finished. Welcome %s.\n\n", identity)))
 	conn.Write([]byte(fmt.Sprintf("You are playing challenge %s.\n", quizObj.Title)))
 	conn.Write([]byte("In order to prove that you are worthy to receive the flag, please answer the following questions.\n"))
 	conn.Write([]byte("The timeout amount is 60 seconds.\n\n"))
 	conn.Write([]byte("Press any key to continue..."))
-	_, err = reader.ReadString('\n')
+	_, err := reader.ReadString('\n')
 	if err != nil {
 		log.Println("[press-any-key] failed to capture user input: ", err)
 		return

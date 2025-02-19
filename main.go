@@ -68,6 +68,7 @@ func main() {
 	quiz := &Quiz{}
 
 	questionFilePath := "./question.json"
+	// questionFilePath := os.Args[1]
 	questionFile, err := os.ReadFile(questionFilePath)
 	if err != nil {
 		log.Fatalln("[question-init] failed to open questions file:", err)
