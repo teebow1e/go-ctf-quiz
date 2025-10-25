@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -115,6 +116,9 @@ func main() {
 		log.Fatalf("[logging-init] failed to open the log file: %v\n", err)
 	}
 	defer logFile.Close()
+
+	// Initialize async logging
+	initLogging(logFile)
 
 	// Get max connections from env or use default
 	maxConnections := 100

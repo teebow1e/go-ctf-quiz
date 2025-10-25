@@ -70,10 +70,12 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 	conn.SetReadDeadline(time.Time{})
 
 	logEntry := &LogEntry{
-		UserToken:   token,
-		Username:    identity,
-		Timestamp:   time.Now().UTC().Format(time.RFC3339),
-		QuizAttempt: []LogQuestion{},
+		UserToken:         token,
+		Username:          identity,
+		Timestamp:         time.Now().UTC().Format(time.RFC3339),
+		QuizAttempt:       []LogQuestion{},
+		QuestionsAnswered: 0,
+		RetryCount:        getAndIncrementRetryCount(token),
 	}
 
 	err = askQuestions(conn, reader, quizObj.Questions, logEntry, quizObj.TimeoutAmount)
@@ -89,6 +91,9 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 	} else {
 		logEntry.Status = "completed"
 	}
+
+	// Set questions_answered to the number of questions attempted
+	logEntry.QuestionsAnswered = len(logEntry.QuizAttempt)
 
 	if logEntry.Status == "completed" {
 		showFlag(conn, quizObj.Flag)
