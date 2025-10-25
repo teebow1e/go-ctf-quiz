@@ -109,7 +109,14 @@ func main() {
 		log.Fatalln("[question-init] failed to unmarshal question json:", err.Error())
 	}
 
-	log.Println(quiz)
+	if quiz.Flag == "" {
+		log.Panicln("[question-init] No flag defined in question file!")
+	}
+	if quiz.TimeoutAmount == 0 {
+		log.Panicln("[question-init] No timeout defined in question file!")
+	}
+
+	log.Printf("Loaded challenge %s by %s, found %v challenges.\n", quiz.Title, quiz.Author, len(quiz.Questions))
 
 	logFile, err = os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

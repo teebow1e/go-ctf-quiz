@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "matplotlib",
+# ]
+# ///
 """
 CTF Quiz Log Analyzer with Visualizations
 Analyzes quiz_attempts.json log file to generate insights and visualizations
+
+Run me using uv: uv run analyze_logs.py
 """
 
 import json
