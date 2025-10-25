@@ -27,13 +27,15 @@ type QuizServer struct {
 	Host       string
 	Port       string
 	QuizObject *Quiz
+	semaphore  chan struct{}
 }
 
-func NewQuizServer(host string, port string, quizObj *Quiz) *QuizServer {
+func NewQuizServer(host string, port string, quizObj *Quiz, maxConnections int) *QuizServer {
 	return &QuizServer{
 		Host:       host,
 		Port:       port,
 		QuizObject: quizObj,
+		semaphore:  make(chan struct{}, maxConnections),
 	}
 }
 
@@ -56,11 +58,38 @@ func (server *QuizServer) Run() {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatalln("[tcp-accept-conn] error occured during accepting new conn:", err)
+			log.Printf("[tcp-accept-conn] error accepting connection: %v\n", err)
+			continue
 		}
 		log.Printf("received connection from %s\n", conn.RemoteAddr().String())
 
-		go handleRequest(conn, server.QuizObject)
+		// Try to acquire semaphore slot
+		select {
+		case server.semaphore <- struct{}{}:
+			// Successfully acquired slot, handle connection
+			go func(c net.Conn) {
+				defer func() {
+					<-server.semaphore // Release slot when done
+				}()
+				handleRequest(c, server.QuizObject)
+			}(conn)
+		default:
+			// No slots available, reject connection
+			log.Printf("[connection-limit] rejecting connection from %s - max connections reached\n", conn.RemoteAddr().String())
+			rejectionMsg := "\n" +
+				"╔═══════════════════════════════════════════════════════════════════════════════╗\n" +
+				"║                                                                               ║\n" +
+				"║                     🚫 SERVER AT MAXIMUM CAPACITY 🚫                          ║\n" +
+				"║                                                                               ║\n" +
+				"║              The quiz server is currently handling the maximum                ║\n" +
+				"║              number of concurrent connections.                                ║\n" +
+				"║                                                                               ║\n" +
+				"║              Please try again in a few moments.                               ║\n" +
+				"║                                                                               ║\n" +
+				"╚═══════════════════════════════════════════════════════════════════════════════╝\n\n"
+			conn.Write([]byte(rejectionMsg))
+			conn.Close()
+		}
 	}
 }
 
@@ -87,6 +116,15 @@ func main() {
 	}
 	defer logFile.Close()
 
-	quizServer := NewQuizServer(listeningHost, listeningPort, quiz)
+	// Get max connections from env or use default
+	maxConnections := 100
+	if maxConnStr := os.Getenv("MAX_CONNECTIONS"); maxConnStr != "" {
+		if parsed, err := strconv.Atoi(maxConnStr); err == nil && parsed > 0 {
+			maxConnections = parsed
+		}
+	}
+	log.Printf("[config] Maximum concurrent connections: %d\n", maxConnections)
+
+	quizServer := NewQuizServer(listeningHost, listeningPort, quiz, maxConnections)
 	quizServer.Run()
 }

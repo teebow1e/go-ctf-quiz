@@ -1,8 +1,8 @@
 {
     "title": "Sample Quiz",
-    "created_at": 123,
     "author": "teebow1e",
     "flag": "FLAG{sample_flag}",
+    "timeout_amount": 60,
     "questions": [
         {
             "id": 1,
