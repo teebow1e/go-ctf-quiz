@@ -1,0 +1,15 @@
+services:
+  web-part1:
+    image: teebow1e/go-ctf-quiz
+    container_name: ctf-web-part1
+    ports:
+      - "7002:1337"
+    volumes:
+      - ./question.json:/app/question.json
+      - ../logs:/app/log
+    environment:
+      - HOST=0.0.0.0
+      - PORT=1337
+      - CTFD_URL=https://your-ctfd-instance.com
+      - MAX_CONNECTIONS=100
+    restart: unless-stopped

@@ -1,0 +1,23 @@
+{
+    "title": "Web Exploitation Part 1",
+    "author": "teebow1e",
+    "flag": "FLAG{example_web_part1}",
+    "timeout_amount": 90,
+    "questions": [
+        {
+            "id": 1,
+            "question": "What HTTP method is used to retrieve data?",
+            "answer": "GET"
+        },
+        {
+            "id": 2,
+            "question": "What status code indicates 'Not Found'?",
+            "answer": "404"
+        },
+        {
+            "id": 3,
+            "question": "What header prevents XSS attacks?",
+            "answer": "Content-Security-Policy"
+        }
+    ]
+}
