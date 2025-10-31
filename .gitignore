@@ -1,5 +1,6 @@
 go-ctf-quiz
 binary
 .env
-question.json
 quiz_attempts.json
+working/
+build-n-push.sh
