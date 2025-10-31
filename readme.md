@@ -41,6 +41,27 @@ In order to get started, prepare a question file named `question.json`. The file
 ```
 After that, edit necessary information in the `.env` file, including CTFd link, listening host/port.
 
+# Sample docker-compose
+```yaml
+services:
+  part1:
+    image: ghcr.io/teebow1e/tcpquiz:latest
+    container_name: part1
+    ports:
+      - "127.0.0.1:7002:1337"
+    volumes:
+      - ./question.json:/app/question.json
+      - ../logs:/app/log
+    environment:
+      - HOST=0.0.0.0
+      - PORT=1337
+      - CTFD_URL=https://example.com
+      - MAX_CONNECTIONS=100
+      # Only when you want CTFd authentication
+      - STRICT_MODE=1 
+    restart: unless-stopped
+```
+
 When everything is done, just `docker compose up -d`!
 
 # Logging

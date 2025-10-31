@@ -15,7 +15,6 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 	var identity, token string
 	defer conn.Close()
 
-	// Set initial read timeout for token input (60 seconds)
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
 	reader := bufio.NewReader(conn)
