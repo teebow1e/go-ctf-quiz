@@ -44,11 +44,13 @@ After that, edit necessary information in the `.env` file, including CTFd link, 
 When everything is done, just `docker compose up -d`!
 
 # Logging
-- Logging should happen automatically in the container. Just copy the file out with:
-```bash
-docker cp go-ctf-quiz-quiz-app:/app/quiz_attempts.json ./quiz_attempts_from_docker.json
-```
-- Filtering with JQ (TODO)
+All quiz attempts are logged to `./log/quiz_attempts_<sanitized_title>.json`. The log directory is automatically created by the application.
 
-# TODO
-- ANSI support
+When using Docker Compose, the logs are persisted on the host machine through volume mounting:
+```yaml
+volumes:
+  - ./question.json:/app/question.json
+  - ./log:/app/log
+```
+
+Each log entry contains detailed information about the attempt including timestamp, user token, answers, and whether they completed the quiz successfully.

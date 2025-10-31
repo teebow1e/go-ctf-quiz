@@ -7,13 +7,18 @@
 # ///
 """
 CTF Quiz Log Analyzer with Visualizations
-Analyzes quiz_attempts.json log file to generate insights and visualizations
+Analyzes quiz_attempts*.json log files to generate insights and visualizations
 
-Run me using uv: uv run analyze_logs.py
+Run me using uv: uv run analyze_logs.py [log_directory]
+
+If log_directory is provided, recursively searches for all quiz_attempts*.json files
+Otherwise, searches in current directory
 """
 
 import json
 import sys
+import glob
+import os
 from collections import defaultdict, Counter
 from pathlib import Path
 
@@ -27,21 +32,54 @@ except ImportError:
     HAS_MATPLOTLIB = False
 
 
-def load_logs(log_file="quiz_attempts.json"):
+def find_log_files(directory="."):
+    """Recursively find all quiz_attempts*.json files"""
+    pattern = os.path.join(directory, "**", "quiz_attempts*.json")
+    log_files = glob.glob(pattern, recursive=True)
+    return sorted(log_files)
+
+
+def load_logs_from_file(log_file):
     """Load NDJSON log file"""
     logs = []
     try:
         with open(log_file, 'r') as f:
             for line in f:
                 if line.strip():
-                    logs.append(json.loads(line))
+                    entry = json.loads(line)
+                    # Add source file to each log entry for tracking
+                    entry['_source_file'] = log_file
+                    logs.append(entry)
         return logs
     except FileNotFoundError:
-        print(f"Error: {log_file} not found!")
-        sys.exit(1)
+        print(f"Warning: {log_file} not found, skipping...")
+        return []
     except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
-        sys.exit(1)
+        print(f"Warning: Error parsing JSON in {log_file}: {e}, skipping...")
+        return []
+
+
+def load_all_logs(directory="."):
+    """Find and load all log files recursively"""
+    log_files = find_log_files(directory)
+
+    if not log_files:
+        print(f"No quiz_attempts*.json files found in {directory}")
+        return []
+
+    print(f"Found {len(log_files)} log file(s):")
+    for f in log_files:
+        print(f"  - {f}")
+    print()
+
+    all_logs = []
+    for log_file in log_files:
+        logs = load_logs_from_file(log_file)
+        if logs:
+            print(f"Loaded {len(logs)} entries from {log_file}")
+            all_logs.extend(logs)
+
+    return all_logs
 
 
 def load_questions(question_file="question.json"):
@@ -395,21 +433,23 @@ def export_csv(logs, output_file="quiz_analysis.csv"):
 
 def main():
     if len(sys.argv) > 1:
-        log_file = sys.argv[1]
+        log_directory = sys.argv[1]
     else:
-        log_file = "quiz_attempts.json"
+        log_directory = "."
 
-    print(f"Loading logs from {log_file}...")
-    logs = load_logs(log_file)
+    print(f"Searching for log files in {os.path.abspath(log_directory)}...")
+    print("=" * 80)
+    logs = load_all_logs(log_directory)
 
     if len(logs) == 0:
         print("No logs found!")
         return
 
-    print(f"Loaded {len(logs)} log entries.\n")
+    print("=" * 80)
+    print(f"\nTotal: Loaded {len(logs)} log entries from all files.\n")
 
-    # Try to load correct answers
-    correct_answers = load_questions()
+    # Try to load correct answers (may not exist in multi-challenge setup)
+    correct_answers = load_questions() if os.path.exists("question.json") else {}
 
     # Generate report
     print_report(logs, correct_answers)

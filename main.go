@@ -6,7 +6,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -43,10 +45,21 @@ func NewQuizServer(host string, port string, quizObj *Quiz, maxConnections int) 
 var (
 	logFile       *os.File
 	logMutex      sync.Mutex
-	logFileName   string = "quiz_attempts.json"
+	logFileName   string
 	listeningHost string = os.Getenv("HOST")
 	listeningPort string = os.Getenv("PORT")
 )
+
+func sanitizeTitle(title string) string {
+	safe := strings.ToLower(title)
+	safe = strings.ReplaceAll(safe, " ", "_")
+
+	// Remove any characters that aren't alphanumeric, underscore, or hyphen
+	reg := regexp.MustCompile("[^a-z0-9_-]+")
+	safe = reg.ReplaceAllString(safe, "")
+
+	return safe
+}
 
 func (server *QuizServer) Run() {
 	log.Printf("Quiz Server listening on %s:%s...\n", server.Host, server.Port)
@@ -117,6 +130,15 @@ func main() {
 	}
 
 	log.Printf("Loaded challenge %s by %s, found %v challenges.\n", quiz.Title, quiz.Author, len(quiz.Questions))
+
+	logDir := "./log"
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Fatalf("[logging-init] failed to create log directory: %v\n", err)
+	}
+
+	sanitizedTitle := sanitizeTitle(quiz.Title)
+	logFileName = fmt.Sprintf("%s/quiz_attempts_%s.json", logDir, sanitizedTitle)
+	log.Printf("Log file will be: %s\n", logFileName)
 
 	logFile, err = os.OpenFile(logFileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
