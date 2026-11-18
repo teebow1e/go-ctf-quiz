@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strings"
 	"time"
 )
 
-func handleRequest(conn net.Conn, quizObj *Quiz) {
-	var identity, token string
+func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator) {
+	player := Identity{Name: "guest", LogKey: "guest-token"}
 	defer conn.Close()
 
 	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
@@ -21,33 +20,32 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 
 	conn.Write([]byte(banner("BKSEC CTF Quiz System")))
 
-	if os.Getenv("STRICT_MODE") == "1" {
-		conn.Write([]byte(prompt("Please enter your CTFd access token: ")))
+	if authenticator != nil {
+		conn.Write([]byte(prompt(authenticator.TokenPrompt)))
 		message, err := reader.ReadString('\n')
 		if err != nil {
 			log.Println("[token stage] failed to read user input: ", err)
 			return
 		}
 
-		token = strings.TrimSpace(string(message))
-
-		log.Printf("Received token: %s\n", token)
 		conn.Write([]byte(info("Verifying your identity...") + "\n"))
-		identity, err = verifyIdentity(token)
+		player, err = authenticator.Verify(strings.TrimSpace(message))
+		if errors.Is(err, errAuthUnavailable) {
+			conn.Write([]byte("\n" + failure("Could not reach the authentication service.") + "\n"))
+			conn.Write([]byte(warning("Please try again in a few moments.") + "\n"))
+			return
+		}
 		if err != nil {
 			conn.Write([]byte("\n" + failure("Authentication failed!") + "\n"))
 			conn.Write([]byte(warning("Please check your token and try again.") + "\n"))
 			return
 		}
-	} else {
-		identity = "guest"
-		token = "guest-token"
 	}
 
 	// Reset deadline for the rest of the interaction
 	conn.SetReadDeadline(time.Time{})
 
-	conn.Write([]byte(success(fmt.Sprintf("Welcome, %s!", identity)) + "\n"))
+	conn.Write([]byte(success(fmt.Sprintf("Welcome, %s!", player.Name)) + "\n"))
 	conn.Write([]byte(divider() + "\n\n"))
 	conn.Write([]byte("You are playing challenge: " + colorize(ColorBoldYellow, quizObj.Title) + " by " + colorize(ColorBoldYellow, quizObj.Author) + "\n\n"))
 	conn.Write([]byte(colorize(ColorWhite, "You must prove your knowledge by answering a series of questions.\n")))
@@ -69,12 +67,12 @@ func handleRequest(conn net.Conn, quizObj *Quiz) {
 	conn.SetReadDeadline(time.Time{})
 
 	logEntry := &LogEntry{
-		UserToken:         token,
-		Username:          identity,
+		UserToken:         player.LogKey,
+		Username:          player.Name,
 		Timestamp:         time.Now().UTC().Format(time.RFC3339),
 		QuizAttempt:       []LogQuestion{},
 		QuestionsAnswered: 0,
-		RetryCount:        getAndIncrementRetryCount(token),
+		RetryCount:        getAndIncrementRetryCount(player.LogKey),
 	}
 
 	err = askQuestions(conn, reader, quizObj.Questions, logEntry, quizObj.TimeoutAmount)

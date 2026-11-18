@@ -8,7 +8,7 @@ Watch go-ctf-quiz in action:
 
 # Features
 - From JSON -> quiz server, ready to publish!
-- Authentication through CTFd access token
+- Authentication through CTFd access token or rCTF team token
 - Log each quiz attempt into a single JSON file
 
 # Getting started
@@ -64,6 +64,21 @@ services:
 
 When everything is done, just `docker compose up -d`!
 
+# Authentication
+Set `STRICT_MODE=1` to require players to log in. `AUTH_PROVIDER` selects the platform:
+
+| `AUTH_PROVIDER` | Required variable | Players enter |
+|---|---|---|
+| `ctfd` (default) | `CTFD_URL` | CTFd access token |
+| `rctf` | `RCTF_URL` | rCTF team token or invite link (`https://ctf.example.com/login?token=...`) |
+
+For rCTF, replace the CTFd variables in the compose file with:
+```yaml
+      - STRICT_MODE=1
+      - AUTH_PROVIDER=rctf
+      - RCTF_URL=https://ctf.example.com
+```
+
 # Logging
 All quiz attempts are logged to `./log/quiz_attempts_<sanitized_title>.json`. The log directory is automatically created by the application.
 
@@ -74,4 +89,4 @@ volumes:
   - ./log:/app/log
 ```
 
-Each log entry contains detailed information about the attempt including timestamp, user token, answers, and whether they completed the quiz successfully.
+Each log entry contains detailed information about the attempt including timestamp, user token, answers, and whether they completed the quiz successfully. With rCTF, the `user_token` field holds the team ID, because team tokens are long-lived credentials and are never written to the logs.

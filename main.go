@@ -30,14 +30,16 @@ type QuizServer struct {
 	Host       string
 	Port       string
 	QuizObject *Quiz
+	Auth       *Authenticator
 	semaphore  chan struct{}
 }
 
-func NewQuizServer(host string, port string, quizObj *Quiz, maxConnections int) *QuizServer {
+func NewQuizServer(host string, port string, quizObj *Quiz, auth *Authenticator, maxConnections int) *QuizServer {
 	return &QuizServer{
 		Host:       host,
 		Port:       port,
 		QuizObject: quizObj,
+		Auth:       auth,
 		semaphore:  make(chan struct{}, maxConnections),
 	}
 }
@@ -85,7 +87,7 @@ func (server *QuizServer) Run() {
 				defer func() {
 					<-server.semaphore // Release slot when done
 				}()
-				handleRequest(c, server.QuizObject)
+				handleRequest(c, server.QuizObject, server.Auth)
 			}(conn)
 		default:
 			// No slots available, reject connection
@@ -158,6 +160,11 @@ func main() {
 	}
 	log.Printf("[config] Maximum concurrent connections: %d\n", maxConnections)
 
-	quizServer := NewQuizServer(listeningHost, listeningPort, quiz, maxConnections)
+	authenticator, err := newAuthenticator()
+	if err != nil {
+		log.Fatalf("[auth-init] %v\n", err)
+	}
+
+	quizServer := NewQuizServer(listeningHost, listeningPort, quiz, authenticator, maxConnections)
 	quizServer.Run()
 }
