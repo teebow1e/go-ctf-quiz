@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Question struct {
@@ -31,6 +32,7 @@ type QuizServer struct {
 	Port       string
 	QuizObject *Quiz
 	Auth       *Authenticator
+	Gate       *TeamGate
 	semaphore  chan struct{}
 }
 
@@ -40,6 +42,7 @@ func NewQuizServer(host string, port string, quizObj *Quiz, auth *Authenticator,
 		Port:       port,
 		QuizObject: quizObj,
 		Auth:       auth,
+		Gate:       newTeamGate(envInt("MAX_SESSIONS_PER_TEAM", 2), time.Duration(envInt("WRONG_COOLDOWN_SECONDS", 10))*time.Second),
 		semaphore:  make(chan struct{}, maxConnections),
 	}
 }
@@ -87,7 +90,7 @@ func (server *QuizServer) Run() {
 				defer func() {
 					<-server.semaphore // Release slot when done
 				}()
-				handleRequest(c, server.QuizObject, server.Auth)
+				handleRequest(c, server.QuizObject, server.Auth, server.Gate)
 			}(conn)
 		default:
 			// No slots available, reject connection
@@ -103,6 +106,7 @@ func (server *QuizServer) Run() {
 				"║              Please try again in a few moments.                               ║\n" +
 				"║                                                                               ║\n" +
 				"╚═══════════════════════════════════════════════════════════════════════════════╝\n\n"
+			conn.SetWriteDeadline(time.Now().Add(2 * time.Second))
 			conn.Write([]byte(rejectionMsg))
 			conn.Close()
 		}

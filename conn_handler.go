@@ -10,19 +10,24 @@ import (
 	"time"
 )
 
-func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator) {
+func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator, gate *TeamGate) {
 	player := Identity{Name: "guest", LogKey: "guest-token"}
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	preAuthTimeout := time.Duration(envInt("PREAUTH_TIMEOUT_SECONDS", 20)) * time.Second
+	conn.SetReadDeadline(time.Now().Add(preAuthTimeout))
+	// Writes share one deadline covering the longest legitimate session, so a
+	// client that stops reading cannot hold a connection slot forever.
+	sessionLimit := preAuthTimeout + 60*time.Second + time.Duration(len(quizObj.Questions)*quizObj.TimeoutAmount)*time.Second
+	conn.SetWriteDeadline(time.Now().Add(sessionLimit))
 
-	reader := bufio.NewReader(conn)
+	reader := bufio.NewReaderSize(conn, maxLineBytes)
 
 	conn.Write([]byte(banner("BKSEC CTF Quiz System")))
 
 	if authenticator != nil {
 		conn.Write([]byte(prompt(authenticator.TokenPrompt)))
-		message, err := reader.ReadString('\n')
+		message, err := readLine(reader)
 		if err != nil {
 			log.Println("[token stage] failed to read user input: ", err)
 			return
@@ -42,6 +47,19 @@ func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator) {
 		}
 	}
 
+	if authenticator != nil {
+		release, wait, err := gate.Acquire(player.LogKey)
+		if errors.Is(err, errCoolingDown) {
+			conn.Write([]byte("\n" + warning(fmt.Sprintf("Your team must wait %d seconds before retrying.", int(wait.Seconds())+1)) + "\n"))
+			return
+		}
+		if err != nil {
+			conn.Write([]byte("\n" + warning("Your team already has the maximum number of open sessions.") + "\n"))
+			return
+		}
+		defer release()
+	}
+
 	// Reset deadline for the rest of the interaction
 	conn.SetReadDeadline(time.Time{})
 
@@ -57,7 +75,7 @@ func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator) {
 
 	// Set timeout for "press any key" prompt (30 seconds)
 	conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-	_, err := reader.ReadString('\n')
+	_, err := readLine(reader)
 	if err != nil {
 		log.Println("[press-any-key] failed to capture user input: ", err)
 		return
@@ -94,6 +112,8 @@ func handleRequest(conn net.Conn, quizObj *Quiz, authenticator *Authenticator) {
 
 	if logEntry.Status == "completed" {
 		showFlag(conn, quizObj.Flag)
+	} else if authenticator != nil && (logEntry.Status == "wrong_answer" || logEntry.Status == "time_out") {
+		gate.Penalize(player.LogKey)
 	}
 	logAttempt(*logEntry)
 }
@@ -112,7 +132,7 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, questionPack []Question, 
 		errCh := make(chan error, 1)
 
 		go func() {
-			userAnswer, err := reader.ReadString('\n')
+			userAnswer, err := readLine(reader)
 			if err != nil {
 				log.Println("[goroutine-capture-answer] failed to capture user input: ", err)
 				errCh <- err
@@ -145,7 +165,7 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, questionPack []Question, 
 			logEntry.QuizAttempt = append(logEntry.QuizAttempt, LogQuestion{
 				QuestionId: question.ID,
 				Question:   question.Question,
-				Answer:     strings.TrimSpace(answer),
+				Answer:     truncateForLog(strings.TrimSpace(answer)),
 				Status:     "correct",
 			})
 		} else {
@@ -153,7 +173,7 @@ func askQuestions(conn net.Conn, reader *bufio.Reader, questionPack []Question, 
 			logEntry.QuizAttempt = append(logEntry.QuizAttempt, LogQuestion{
 				QuestionId: question.ID,
 				Question:   question.Question,
-				Answer:     strings.TrimSpace(answer),
+				Answer:     truncateForLog(strings.TrimSpace(answer)),
 				Status:     "incorrect",
 			})
 			return errors.New("received wrong answer from user")

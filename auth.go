@@ -32,17 +32,21 @@ func newAuthenticator() (*Authenticator, error) {
 		return nil, nil
 	}
 
+	limited := func(verify func(string) (Identity, error)) func(string) (Identity, error) {
+		return newVerifyLimiter(verify, envInt("AUTH_RATE_PER_SECOND", 10)).Verify
+	}
+
 	switch provider := os.Getenv("AUTH_PROVIDER"); provider {
 	case "", "ctfd":
 		return &Authenticator{
 			TokenPrompt: "Please enter your CTFd access token: ",
-			Verify: func(token string) (Identity, error) {
+			Verify: limited(func(token string) (Identity, error) {
 				name, err := verifyIdentity(token)
 				if err != nil {
 					return Identity{}, err
 				}
 				return Identity{Name: name, LogKey: token}, nil
-			},
+			}),
 		}, nil
 	case "rctf":
 		baseURL := strings.TrimRight(os.Getenv("RCTF_URL"), "/")
@@ -52,9 +56,9 @@ func newAuthenticator() (*Authenticator, error) {
 		}
 		return &Authenticator{
 			TokenPrompt: "Please enter your rCTF team token or invite link: ",
-			Verify: func(token string) (Identity, error) {
+			Verify: limited(func(token string) (Identity, error) {
 				return verifyRCTF(baseURL, token)
-			},
+			}),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown AUTH_PROVIDER %q (expected ctfd or rctf)", provider)
